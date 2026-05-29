@@ -658,7 +658,7 @@ const MENU_DATA = [
   ["Dessert","Tarte Tatin","Torta di mele Fuji (Orto al Chiosco) e pasta brisé della tradizione francese, preparata al contrario · accompagnata da panna montata fresca","7.00","","1,7"],
   ["Dessert","Zuppa Inglese secondo La Deliziosa","Biscotti secchi · budini · liquore e caffè · dal 1987","6.00","","1,3,6,7,8,12"],
   ["Dessert","Tiramisù Classico","Al cucchiaio, in vetro","6.00","","1,3,7"],
-  ["Dessert","Mascarpone, Brownie, Cremoso alla Gianduja di Nocciole Km 0","al cucchiaio, in vetro","6.00","","3,7,8"],
+  ["Dessert","Mascarpone, Brownie, Cremoso alla Gianduja","Nocciole Km 0 · al cucchiaio, in vetro","6.00","","3,7,8"],
   ["Dessert","— GELATI E SORBETTI —","Di nostra produzione · al cucchiaio","","",""],
   ["Dessert","Gelato al Fiordilatte e Fragole fresche","","6.00","","7"],
   ["Dessert","Gelato al Pistacchio","","5.50","","7,8"],
@@ -1036,25 +1036,28 @@ buildMenu();
 <!-- Auto-reload on new deploy -->
 <script>
 (function() {
-  let currentHash = null;
+  let currentVersion = null;
 
-  async function getPageHash() {
+  async function getVersion() {
     try {
-      const res = await fetch(location.href + '?_=' + Date.now(), { cache: 'no-store' });
-      const text = await res.text();
-      // Hash semplice: lunghezza + somma char dei primi 2000 char
-      const sample = text.slice(0, 2000);
-      let hash = sample.length;
-      for (let i = 0; i < sample.length; i++) hash = (hash * 31 + sample.charCodeAt(i)) & 0xFFFFFFFF;
-      return hash;
+      const res = await fetch(location.pathname, {
+        method: 'HEAD',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+      });
+      // Usa ETag se disponibile, altrimenti Last-Modified, altrimenti Content-Length
+      return res.headers.get('etag')
+          || res.headers.get('last-modified')
+          || res.headers.get('content-length')
+          || null;
     } catch(e) { return null; }
   }
 
   async function checkForUpdate() {
-    const hash = await getPageHash();
-    if (hash === null) return;
-    if (currentHash === null) { currentHash = hash; return; }
-    if (hash !== currentHash) {
+    const v = await getVersion();
+    if (v === null) return;
+    if (currentVersion === null) { currentVersion = v; return; }
+    if (v !== currentVersion) {
       console.log('Nuova versione rilevata — ricarico...');
       location.reload(true);
     }
@@ -1062,7 +1065,7 @@ buildMenu();
 
   // Prima lettura dopo 5s, poi ogni 60s
   setTimeout(async () => {
-    currentHash = await getPageHash();
+    currentVersion = await getVersion();
     setInterval(checkForUpdate, 60000);
   }, 5000);
 })();
